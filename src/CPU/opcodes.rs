@@ -218,6 +218,12 @@ pub fn handle_opcode(opc: u16, cpu: &mut CHIP8) {
 					cpu.pc += 2;
 				},
 
+				0x0018 => { // FX18 - Sound - Sets the sound timer to Vx
+					let vxi = ((opc & 0x0F00) >> 8) as usize;
+					cpu.sound_timer = cpu.V[vxi];
+					cpu.pc += 2;
+				}
+
 				0x0029 => { // FX29 - MEM - Sets I to the location of the sprite for the character in Vx.
 					let vxi = ((opc & 0x0F00) >> 8) as usize;
 					cpu.I = (cpu.V[vxi] as u16) * 0x5;
