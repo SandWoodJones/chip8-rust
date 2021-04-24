@@ -1,5 +1,5 @@
 # chip8-rust
-A CHIP-8 emulator written in Rust.
+A CHIP-8 emulator, written in Rust.
 
 ## Sources
 + [Wikipedia](https://en.wikipedia.org/wiki/CHIP-8)<br>
