@@ -1,15 +1,19 @@
-#[allow(non_snake_case)]
-mod CPU;
+use chip8::CHIP8;
 
-use crate::CPU::CHIP8;
+use std::env;
+use std::process;
 
 fn main() {
-	let mut chip8 = CHIP8::new();
-	chip8.load_program("demos/pong2.c8").unwrap();
+	let args: Vec<_> = env::args().collect();
 
-	loop {
-		chip8.emulate_cycle();
-	}
+	let machine = CHIP8::new(&args)
+						.unwrap_or_else(
+							|e| {
+								eprintln!("Error creating emulator object: {}", e);
+								process::exit(1);
+							}
+						);
 
+	chip8::run(machine);
 }
 
