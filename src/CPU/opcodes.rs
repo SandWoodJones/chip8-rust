@@ -1,12 +1,12 @@
-use crate::CPU::CHIP8;
+use crate::{ CPU::CHIP8, WINDOW_W, WINDOW_H };
 use std::convert::TryInto;
 
 use rand::random;
 
 impl CHIP8 {
 	pub fn handle_opcode(&mut self, opc: u16) {
-		let vxi = ((opc & 0x0F00) >> 8) as usize; // turn X in opcode to an index
-		let vyi = ((opc & 0x00F0) >> 4) as usize; // same but for Y
+		let vxi = ((opc & 0x0F00) >> 8) as usize; // turn X (2nd digit of an opcode) into an index
+		let vyi = ((opc & 0x00F0) >> 4) as usize; // same but for Y (3rd digit of an opcode)
 
 		match opc & 0xF000 { // To match the opcodes we only care about the first 4 bits
 			0x0000 => { // There are multiple codes that start the first 4 bits as 0
@@ -157,8 +157,31 @@ impl CHIP8 {
 				self.pc += 2;
 			}
 
-			0xD000 => { // DXYN - Disp -- Draw a sprite at (Vx, Vy) with a width of 8 and height of N+1
-				// ...
+			0xD000 => { // DXYN - Disp -- Draw a sprite at (Vx,Vy) of width 8 and height N+1. Vf is set to 1 if any pixels get flipped and to 0 if not.
+				let height = (opc & 0x000F) as usize;
+				self.V[0xF] = 0; // reset the Vf register
+
+				for yline in 0 .. height { // for each row
+					let sprite = self.memory[self.I as usize + yline]; // get the pixel data stored at I + yline
+
+					for xline in 0 .. 8 { // for each bit of a row
+						let cur_pixel = sprite & (0x80 >> xline); // scans through the sprite byte, 1 bit at a time.
+						if cur_pixel != 0 { // if the current pixel is set to 1
+							// access the screen's 2D array of pixels with 1D indexing.
+							let screen_coords = 
+								(vxi + xline + ((vyi + yline) * 64)) % (WINDOW_W as usize * WINDOW_H as usize);
+
+							// check if the pixel on display at that position is already set to 1, If it
+							// is set the Vf register accordingly.
+							if self.gfx[screen_coords] == 1 { self.V[0xF] = 1; }
+
+							// finally, update the screen's pixels with the new values using XOR
+							self.gfx[screen_coords] ^= 1;
+						}
+					}
+				}
+
+				self.draw_flag = true; // the vram was changed so we must redraw
 				self.pc += 2;
 			},
 
@@ -198,6 +221,11 @@ impl CHIP8 {
 
 					0x0018 => { // FX18 - Sound - Sets the sound timer to Vx
 						self.sound_timer = self.V[vxi];
+						self.pc += 2;
+					},
+
+					0x001E => { // FX1E - MEM - Adds Vx to I. Vf not affected
+						self.I += self.V[vxi] as u16;
 						self.pc += 2;
 					}
 
@@ -239,6 +267,5 @@ impl CHIP8 {
 				println!("Unknown opcode: {:X}", opc);
 			}
 		}
-		println!("opcode: {:X}", opc);
 	}
 }

@@ -1,9 +1,11 @@
 mod opcodes;
 
-use crate::CHIP8;
+use crate::{ CHIP8, WINDOW_W, WINDOW_H };
 
 use std::fs;
 use std::io::{self, Read};
+
+use image::{ RgbaImage, Rgba };
 
 // Start-Up, Program loading
 impl CHIP8 {
@@ -13,16 +15,17 @@ impl CHIP8 {
 		}
 
 		let mut c = CHIP8 {
-			opcode: 0x0000, // Reset current opcode
+			opcode: 0x0000, 
 			memory: [0x00u8; 4096],
 			V: [0x00; 16],
-			I: 0x0000, // Reset index register
-			pc: 0x0200, // Program counter starts at 0x200
-			gfx: [0; 64 * 32],
+			I: 0x0000,
+			pc: 0x0200, // Program counter starts at 512
+			gfx: [0; WINDOW_W as usize * WINDOW_H as usize],
+			draw_flag: false,
 			delay_timer: 0x00,
 			sound_timer: 0x00,
 			stack: [0x0000; 16],
-			sp: 0x0000, // Reset stack pointer
+			sp: 0x0000,
 			key: [0x00; 16]
 		};
 
@@ -40,7 +43,7 @@ impl CHIP8 {
 	
 	fn load_program(&mut self, path: &str) -> io::Result<()> {
 		let file = CHIP8::load_file(path)?;
-
+		
 		if 4096 - 512 < file.len() {
 			return Err(io::Error::new(io::ErrorKind::WriteZero, "ROM too big for memory"));
 		}
@@ -60,22 +63,49 @@ impl CHIP8 {
 		p.read_to_end(&mut buf)?;
 		Ok(buf)
 	}
+
+	// Create an image from the vram
+	fn create_screen_image(&self) -> RgbaImage {
+		let mut txt = RgbaImage::from_pixel(WINDOW_W.into(), WINDOW_H.into(), Rgba([0, 0, 0, 255]));
+		
+		for y in 0 .. WINDOW_H {
+			for x in 0 .. WINDOW_W {
+				if self.gfx[(y as usize * WINDOW_W as usize) + x as usize] == 0 {
+					txt.put_pixel(x.into(), y.into(), Rgba([0, 0, 0, 255])); // disabled
+				} else {
+					txt.put_pixel(x.into(), y.into(), Rgba([255, 255, 255, 255])); // enabled
+				}
+			}
+		}
+
+		txt
+	}
 }
 
 // Emulating
 impl CHIP8 {
 	// Emulates one cycle of the CPU
-	pub fn emulate_cycle(&mut self) {
+	pub fn emulate_cycle(&mut self) -> Option<RgbaImage> {
 		// Fetch opcode
-		let opc1 = self.memory[self.pc as usize]; // First byte 
-		let opc2 = self.memory[(self.pc + 1) as usize]; // Second byte
+		let opc1 = self.memory[self.pc as usize] as u16; // First byte 
+		let opc2 = self.memory[(self.pc + 1) as usize] as u16; // Second byte
 		// Merge the 2 bytes, by shifting the first by 8 and ORing the second.
-		self.opcode = (opc1 as u16) << 8 | opc2 as u16;
+		self.opcode = opc1 << 8 | opc2;
+
+		//println!("opcode: {:X}", self.opcode);
 
 		// Decode opcode
 		self.handle_opcode(self.opcode);
+		
+		let screen;
+		if self.draw_flag { // the draw flag has been set
+			screen = Some(self.create_screen_image());
+		} else { screen = None; }
+
+		self.draw_flag = false; // reset the draw flag
 
 		self.update_timers();
+		screen
 	}
 
 	fn update_timers(&mut self) {
