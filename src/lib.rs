@@ -1,6 +1,8 @@
 #[allow(non_snake_case)]
 pub mod CPU;
 
+mod graphics;
+
 static FONTSET: [u8; 80] = [ 0xF0, 0x90, 0x90, 0x90, 0xF0,	 // 0
 							 0x20, 0x60, 0x20, 0x20, 0x70,	 // 1
 							 0xF0, 0x10, 0xF0, 0x80, 0xF0,	 // 2
@@ -41,35 +43,38 @@ pub struct CHIP8 {
 use crow::{
 	glutin::{
 		event::{ Event, WindowEvent },
-		event_loop::{ EventLoop, ControlFlow },
+		event_loop::ControlFlow,
 		window::WindowBuilder,
 		dpi::LogicalSize
 	},
-	Context, DrawConfig, Texture
+	DrawConfig, Texture
 };
 
+use crate::graphics::GraphicalContext;
+
 pub fn run(mut machine: CHIP8) {
-	let event_loop = EventLoop::new();
 	let window_bld = WindowBuilder::new()
 			.with_inner_size(LogicalSize::new(WINDOW_W, WINDOW_H))
 			.with_resizable(false);
 
-	let mut context = Context::new(window_bld, &event_loop).unwrap();
-	
-	let mut texture: Option<Texture> = None;
+	let gc = GraphicalContext::new(window_bld).unwrap();
+	let GraphicalContext { ctx: mut context, .. } = gc; // take the context out of gc by destructuring it
 
-	event_loop.run(move |event, _, control_flow| {
+	let mut screen_texture: Option<Texture> = None;
+
+	gc.el.run(move |event, _, control_flow| {
 		match event {
 			Event::WindowEvent { event, .. } => match event {
 				WindowEvent::CloseRequested => { *control_flow = ControlFlow::Exit; },
+				WindowEvent::KeyboardInput { input, .. } => machine.handle_input(input.scancode),
 				_ => ()
 			},
 
 			Event::MainEventsCleared => {
-				let screen = machine.emulate_cycle();
-				match screen {
+				let screen_image = machine.emulate_cycle();
+				match screen_image {
 					Some(s) => { 
-						texture = Some(Texture::from_image(&mut context, s).unwrap());
+						screen_texture = Some(Texture::from_image(&mut context, s).unwrap());
 						context.window().request_redraw();
 					},
 					None => ()
@@ -77,7 +82,7 @@ pub fn run(mut machine: CHIP8) {
 			},
 
 			Event::RedrawRequested(..) => {
-				match &texture {
+				match &screen_texture {
 					Some(t) => {
 						let mut surface = context.surface();
 

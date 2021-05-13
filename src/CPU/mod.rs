@@ -66,7 +66,8 @@ impl CHIP8 {
 
 	// Create an image from the vram
 	fn create_screen_image(&self) -> RgbaImage {
-		let mut txt = RgbaImage::from_pixel(WINDOW_W.into(), WINDOW_H.into(), Rgba([0, 0, 0, 255]));
+		let mut txt = RgbaImage::from_pixel(WINDOW_W.into(), WINDOW_H.into(), 
+											Rgba([0, 0, 0, 255]));
 		
 		for y in 0 .. WINDOW_H {
 			for x in 0 .. WINDOW_W {
@@ -80,6 +81,28 @@ impl CHIP8 {
 
 		txt
 	}
+
+	pub fn handle_input(&mut self, scancode: u32) {
+		match scancode {
+			0x2D => self.key[0x0] = 1, // X
+			0x02 => self.key[0x1] = 1, // 1
+			0x03 => self.key[0x2] = 1, // 2
+			0x04 => self.key[0x3] = 1, // 3
+			0x10 => self.key[0x4] = 1, // Q
+			0x11 => self.key[0x5] = 1, // W
+			0x12 => self.key[0x6] = 1, // E
+			0x1E => self.key[0x7] = 1, // A
+			0x1F => self.key[0x8] = 1, // S
+			0x20 => self.key[0x9] = 1, // D
+			0x2C => self.key[0xA] = 1, // Z
+			0x2E => self.key[0xB] = 1, // E
+			0x05 => self.key[0xC] = 1, // 4
+			0x13 => self.key[0xD] = 1, // R
+			0x21 => self.key[0xE] = 1, // F
+			0x2F => self.key[0xF] = 1, // V
+			_ => (),
+		}
+	}
 }
 
 // Emulating
@@ -92,20 +115,19 @@ impl CHIP8 {
 		// Merge the 2 bytes, by shifting the first by 8 and ORing the second.
 		self.opcode = opc1 << 8 | opc2;
 
-		//println!("opcode: {:X}", self.opcode);
+		println!("opcode: {:X}", self.opcode);
 
 		// Decode opcode
-		self.handle_opcode(self.opcode);
+		self.handle_opcode();
 		
-		let screen;
-		if self.draw_flag { // the draw flag has been set
-			screen = Some(self.create_screen_image());
-		} else { screen = None; }
-
-		self.draw_flag = false; // reset the draw flag
-
 		self.update_timers();
-		screen
+
+		if self.draw_flag {
+			self.draw_flag = false; // reset the draw flag
+			Some(self.create_screen_image())
+		} else {
+			None
+		}
 	}
 
 	fn update_timers(&mut self) {
