@@ -71,13 +71,12 @@ pub fn run(mut machine: CHIP8) {
 			},
 
 			Event::MainEventsCleared => {
-				let screen_image = machine.emulate_cycle();
-				match screen_image {
-					Some(s) => { 
-						screen_texture = Some(Texture::from_image(&mut context, s).unwrap());
-						context.window().request_redraw();
-					},
-					None => ()
+				machine.emulate_cycle();
+				if machine.draw_flag {
+					let screen_image = machine.create_screen_image();
+					screen_texture = Some(Texture::from_image(&mut context, screen_image).unwrap());
+					context.window().request_redraw();
+					machine.draw_flag = false;
 				}
 			},
 

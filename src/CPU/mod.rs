@@ -68,7 +68,7 @@ impl CHIP8 {
 	}
 
 	// Create an image from the vram
-	fn create_screen_image(&self) -> RgbaImage {
+	pub fn create_screen_image(&self) -> RgbaImage {
 		let mut txt = RgbaImage::from_pixel(WINDOW_W.into(), WINDOW_H.into(), 
 											Rgba([0, 0, 0, 255]));
 		
@@ -111,7 +111,7 @@ impl CHIP8 {
 // Emulating
 impl CHIP8 {
 	// Emulates one cycle of the CPU
-	pub fn emulate_cycle(&mut self) -> Option<RgbaImage> {
+	pub fn emulate_cycle(&mut self) {
 		// Fetch opcode
 		let opc1 = self.memory[self.pc as usize] as u16; // First byte 
 		let opc2 = self.memory[(self.pc + 1) as usize] as u16; // Second byte
@@ -124,13 +124,6 @@ impl CHIP8 {
 		self.handle_opcode();
 		
 		self.update_timers();
-
-		if self.draw_flag {
-			self.draw_flag = false; // reset the draw flag
-			Some(self.create_screen_image())
-		} else {
-			None
-		}
 	}
 
 	fn update_timers(&mut self) {

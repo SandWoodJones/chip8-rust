@@ -114,9 +114,9 @@ impl CHIP8 {
 
 					0x0005 => { // 8XY5 - Math - Subs Vy from Vx. sets Vf to 0 if theres a borrow and 1 if there isnt
 						if self.V[vyi] > self.V[vxi] { // goes into negative
-							self.V[0xF] = 0; // There's a borrow.
+							self.V[0xF] = 1; // There's a borrow.
 						} else {
-							self.V[0xF] = 1;
+							self.V[0xF] = 0;
 						}
 						self.V[vxi] = self.V[vxi].wrapping_sub(self.V[vyi]);
 						self.pc += 2;
