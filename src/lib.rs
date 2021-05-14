@@ -99,3 +99,16 @@ pub fn run(mut machine: CHIP8) {
 		}
 	});
 }
+
+
+use std::fs;
+use std::io::{ self, Read };
+
+// Read a file in binary mode and store it in a buffer
+fn load_file(path: &str) -> io::Result<Vec<u8>> {
+	let mut p = fs::File::open(path)?;
+	let mut buf = Vec::new();
+
+	p.read_to_end(&mut buf)?;
+	Ok(buf)
+}

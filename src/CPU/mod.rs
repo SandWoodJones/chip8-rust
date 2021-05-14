@@ -1,17 +1,24 @@
 mod opcodes;
 
-use crate::{ CHIP8, WINDOW_W, WINDOW_H };
+use crate::{ CHIP8, WINDOW_W, WINDOW_H, load_file };
 
-use std::fs;
-use std::io::{self, Read};
+use std::io;
 
 use image::{ RgbaImage, Rgba };
 
 // Start-Up, Program loading
 impl CHIP8 {
-	pub fn new(args: &[String]) -> io::Result<CHIP8> {
-		if args.len() < 2 {
-			return Err(io::Error::new(io::ErrorKind::InvalidInput, "program path missing"));
+	pub fn new(args: Option<&[String]>) -> io::Result<CHIP8> {
+		let mut program_path = None;
+		match args {
+			Some(a) => {
+				if a.len() < 2 {
+					return Err(io::Error::new(io::ErrorKind::InvalidInput, "program path missing"));
+				} else {
+					program_path = Some(&a[1]);
+				}
+			},
+			None => ()
 		}
 
 		let mut c = CHIP8 {
@@ -33,16 +40,21 @@ impl CHIP8 {
 		for i in 0 .. 80 {
 			c.memory[i] = crate::FONTSET[i];
 		}
-
-		if let Err(e) = c.load_program(&args[1]) {
-			return Err(e)
+		
+		match program_path {
+			Some(p) => {
+				if let Err(e) = c.load_program(&p) {
+					return Err(e)
+				}
+			},
+			None => ()
 		}
 
 		Ok(c)
 	}
 	
 	fn load_program(&mut self, path: &str) -> io::Result<()> {
-		let file = CHIP8::load_file(path)?;
+		let file = load_file(path)?;
 		
 		if 4096 - 512 < file.len() {
 			return Err(io::Error::new(io::ErrorKind::WriteZero, "ROM too big for memory"));
@@ -53,15 +65,6 @@ impl CHIP8 {
 		}
 
 		Ok(())
-	}
-
-	// Read a file in binary mode and store it in a buffer
-	fn load_file(path: &str) -> io::Result<Vec<u8>> {
-		let mut p = fs::File::open(path)?;
-		let mut buf = Vec::new();
-
-		p.read_to_end(&mut buf)?;
-		Ok(buf)
 	}
 
 	// Create an image from the vram

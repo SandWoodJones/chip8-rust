@@ -3,6 +3,9 @@ use std::convert::TryInto;
 
 use rand::random;
 
+#[cfg(test)]
+mod tests;
+
 impl CHIP8 {
 	pub fn handle_opcode(&mut self) {
 		let vxi = ((self.opcode & 0x0F00) >> 8) as usize; // turn X (2nd digit of an opcode) into an index
