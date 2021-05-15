@@ -6,6 +6,8 @@ use std::io;
 
 use image::{ RgbaImage, Rgba };
 
+use crow::glutin::event::{ KeyboardInput, ElementState };
+
 // Start-Up, Program loading
 impl CHIP8 {
 	pub fn new(args: Option<&[String]>) -> io::Result<CHIP8> {
@@ -84,25 +86,25 @@ impl CHIP8 {
 
 		txt
 	}
-
-	pub fn handle_input(&mut self, scancode: u32) {
-		match scancode {
-			0x2D => self.key[0x0] = 1, // X
-			0x02 => self.key[0x1] = 1, // 1
-			0x03 => self.key[0x2] = 1, // 2
-			0x04 => self.key[0x3] = 1, // 3
-			0x10 => self.key[0x4] = 1, // Q
-			0x11 => self.key[0x5] = 1, // W
-			0x12 => self.key[0x6] = 1, // E
-			0x1E => self.key[0x7] = 1, // A
-			0x1F => self.key[0x8] = 1, // S
-			0x20 => self.key[0x9] = 1, // D
-			0x2C => self.key[0xA] = 1, // Z
-			0x2E => self.key[0xB] = 1, // E
-			0x05 => self.key[0xC] = 1, // 4
-			0x13 => self.key[0xD] = 1, // R
-			0x21 => self.key[0xE] = 1, // F
-			0x2F => self.key[0xF] = 1, // V
+	
+	pub fn handle_input(&mut self, key: KeyboardInput) {
+		match key.scancode {
+			0x2D => self.key[0x0] = (key.state == ElementState::Pressed) as u8, // X
+			0x02 => self.key[0x1] = (key.state == ElementState::Pressed) as u8, // 1
+			0x03 => self.key[0x2] = (key.state == ElementState::Pressed) as u8, // 2
+			0x04 => self.key[0x3] = (key.state == ElementState::Pressed) as u8, // 3
+			0x10 => self.key[0x4] = (key.state == ElementState::Pressed) as u8, // Q
+			0x11 => self.key[0x5] = (key.state == ElementState::Pressed) as u8, // W
+			0x12 => self.key[0x6] = (key.state == ElementState::Pressed) as u8, // E
+			0x1E => self.key[0x7] = (key.state == ElementState::Pressed) as u8, // A
+			0x1F => self.key[0x8] = (key.state == ElementState::Pressed) as u8, // S
+			0x20 => self.key[0x9] = (key.state == ElementState::Pressed) as u8, // D
+			0x2C => self.key[0xA] = (key.state == ElementState::Pressed) as u8, // Z
+			0x2E => self.key[0xB] = (key.state == ElementState::Pressed) as u8, // E
+			0x05 => self.key[0xC] = (key.state == ElementState::Pressed) as u8, // 4
+			0x13 => self.key[0xD] = (key.state == ElementState::Pressed) as u8, // R
+			0x21 => self.key[0xE] = (key.state == ElementState::Pressed) as u8, // F
+			0x2F => self.key[0xF] = (key.state == ElementState::Pressed) as u8, // V
 			_ => (),
 		}
 	}
@@ -118,7 +120,8 @@ impl CHIP8 {
 		// Merge the 2 bytes, by shifting the first by 8 and ORing the second.
 		self.opcode = opc1 << 8 | opc2;
 
-		println!("opcode: {:X}", self.opcode);
+		//println!("opcode: {:X}", self.opcode);
+		println!("{:?}", self.key);
 
 		// Decode opcode
 		self.handle_opcode();

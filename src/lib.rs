@@ -66,7 +66,7 @@ pub fn run(mut machine: CHIP8) {
 		match event {
 			Event::WindowEvent { event, .. } => match event {
 				WindowEvent::CloseRequested => { *control_flow = ControlFlow::Exit; },
-				WindowEvent::KeyboardInput { input, .. } => machine.handle_input(input.scancode),
+				WindowEvent::KeyboardInput { input, .. } => machine.handle_input(input),
 				_ => ()
 			},
 
