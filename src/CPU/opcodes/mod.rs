@@ -185,10 +185,12 @@ impl CHIP8 {
 
 					for xline in 0 .. 8 { // for each bit of a row
 						let cur_pixel = sprite & (0x80 >> xline); // scans through the sprite byte, 1 bit at a time.
-						if cur_pixel != 0 { // if the current pixel is set to 1
+						if cur_pixel != 0 { // if the current pixel is set
 							// access the screen's 2D array of pixels with 1D indexing.
-							let screen_coords = 
-								(vxi + xline + ((vyi + yline) * 64)) % (WINDOW_W as usize * WINDOW_H as usize);
+							let screen_coords = (
+								self.V[vxi] as usize + xline + 
+								((self.V[vyi] as usize + yline) * 64))
+								% (WINDOW_W as usize * WINDOW_H as usize);
 
 							// check if the pixel on display at that position is already set to 1, If it
 							// is set the Vf register accordingly.
