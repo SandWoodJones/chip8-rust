@@ -44,7 +44,7 @@ pub struct CHIP8 {
 
 use crow::{
 	glutin::{
-		event::{ Event, WindowEvent },
+		event::{ Event, WindowEvent, VirtualKeyCode },
 		event_loop::ControlFlow,
 		window::WindowBuilder,
 		dpi::LogicalSize
@@ -54,8 +54,14 @@ use crow::{
 
 use crate::graphics::GraphicalContext;
 
-pub fn run(mut machine: CHIP8) {
+use std::path::Path;
+
+pub fn run(mut machine: CHIP8, program_path: &String) {
+	let program_name = Path::new(&program_path).file_name().unwrap()
+						.to_str().unwrap();
+
 	let window_bld = WindowBuilder::new()
+			.with_title(format!("CHIP-8 {}", program_name))
 			.with_inner_size(LogicalSize::new(VIRTUAL_WW, VIRTUAL_WH))
 			.with_resizable(false);
 
@@ -64,16 +70,23 @@ pub fn run(mut machine: CHIP8) {
 
 	let mut screen_texture: Option<Texture> = None;
 
-	let dc = DrawConfig {
+	let drw_cfg = DrawConfig {
 		scale: (3, 3),
-		..Default::default()
+		.. Default::default()
 	};
 
 	gc.el.run(move |event, _, control_flow| {
 		match event {
 			Event::WindowEvent { event, .. } => match event {
 				WindowEvent::CloseRequested => { *control_flow = ControlFlow::Exit; },
-				WindowEvent::KeyboardInput { input, .. } => machine.handle_input(input),
+				WindowEvent::KeyboardInput { input, .. } => match input.virtual_keycode {
+					Some(kc) => match kc {
+						VirtualKeyCode::Escape => *control_flow = ControlFlow::Exit,
+						_ => ()
+					},
+
+					_ => machine.handle_input(input)
+				}
 				_ => ()
 			},
 
@@ -83,16 +96,15 @@ pub fn run(mut machine: CHIP8) {
 					let screen_image = machine.create_screen_image();
 					screen_texture = Some(Texture::from_image(&mut context, screen_image).unwrap());
 					context.window().request_redraw();
-					machine.draw_flag = false;
 				}
 			},
 
 			Event::RedrawRequested(..) => {
 				match &screen_texture {
-					Some(t) => {
+					Some(txt) => {
 						let mut surface = context.surface();
 
-						context.draw(&mut surface, &t, (0, 0), &dc);
+						context.draw(&mut surface, &txt, (0, 0), &drw_cfg);
 
 						context.present(surface).unwrap(); // swap back-buffer
 					},

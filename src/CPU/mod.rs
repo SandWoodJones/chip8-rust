@@ -70,7 +70,7 @@ impl CHIP8 {
 	}
 
 	// Create an image from the vram
-	pub fn create_screen_image(&self) -> RgbaImage {
+	pub fn create_screen_image(&mut self) -> RgbaImage {
 		let mut img = RgbaImage::from_pixel(WINDOW_W.into(), WINDOW_H.into(), 
 											Rgba([0, 0, 0, 255]));
 		
@@ -84,6 +84,7 @@ impl CHIP8 {
 			}
 		}
 
+		self.draw_flag = false; // reset the draw flag
 		img
 	}
 	

@@ -14,6 +14,6 @@ fn main() {
 							}
 						);
 
-	chip8::run(machine);
+	chip8::run(machine, &args[1]);
 }
 
