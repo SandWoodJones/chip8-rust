@@ -8,7 +8,7 @@ use image::{ RgbaImage, Rgba };
 
 use crow::glutin::event::{ KeyboardInput, ElementState };
 
-// Start-Up, Program loading
+// Start-Up, program loading and screen updating
 impl CHIP8 {
 	pub fn new(args: Option<&[String]>) -> io::Result<CHIP8> {
 		let mut program_path = None;
@@ -30,7 +30,7 @@ impl CHIP8 {
 			I: 0x0000,
 			pc: 0x0200, // Program counter starts at 512
 			gfx: [0; WINDOW_W as usize * WINDOW_H as usize],
-			draw_flag: false,
+			draw_flag: true, // Clear screen once
 			delay_timer: 0x00,
 			sound_timer: 0x00,
 			stack: [0x0000; 16],
@@ -71,20 +71,20 @@ impl CHIP8 {
 
 	// Create an image from the vram
 	pub fn create_screen_image(&self) -> RgbaImage {
-		let mut txt = RgbaImage::from_pixel(WINDOW_W.into(), WINDOW_H.into(), 
+		let mut img = RgbaImage::from_pixel(WINDOW_W.into(), WINDOW_H.into(), 
 											Rgba([0, 0, 0, 255]));
 		
 		for y in 0 .. WINDOW_H {
 			for x in 0 .. WINDOW_W {
 				if self.gfx[(y as usize * WINDOW_W as usize) + x as usize] == 0 {
-					txt.put_pixel(x.into(), y.into(), Rgba([0, 0, 0, 255])); // disabled
+					img.put_pixel(x.into(), y.into(), Rgba([0, 0, 0, 255])); // disabled
 				} else {
-					txt.put_pixel(x.into(), y.into(), Rgba([255, 255, 255, 255])); // enabled
+					img.put_pixel(x.into(), y.into(), Rgba([255, 255, 255, 255])); // enabled
 				}
 			}
 		}
 
-		txt
+		img
 	}
 	
 	pub fn handle_input(&mut self, key: KeyboardInput) {
@@ -120,8 +120,8 @@ impl CHIP8 {
 		// Merge the 2 bytes, by shifting the first by 8 and ORing the second.
 		self.opcode = opc1 << 8 | opc2;
 
-		//println!("opcode: {:X}", self.opcode);
-		println!("{:?}", self.key);
+		println!("opcode: {:X}", self.opcode);
+		//println!("{:?}", self.key);
 
 		// Decode opcode
 		self.handle_opcode();

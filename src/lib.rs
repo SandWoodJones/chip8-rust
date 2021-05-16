@@ -22,6 +22,8 @@ static FONTSET: [u8; 80] = [ 0xF0, 0x90, 0x90, 0x90, 0xF0,	 // 0
 
 const WINDOW_W: u8 = 64;
 const WINDOW_H: u8 = 32;
+const VIRTUAL_WW: u8 = 192;
+const VIRTUAL_WH: u8 = 96;
 
 // define the pieces of the cpu
 #[allow(non_snake_case)]
@@ -54,13 +56,18 @@ use crate::graphics::GraphicalContext;
 
 pub fn run(mut machine: CHIP8) {
 	let window_bld = WindowBuilder::new()
-			.with_inner_size(LogicalSize::new(WINDOW_W, WINDOW_H))
+			.with_inner_size(LogicalSize::new(VIRTUAL_WW, VIRTUAL_WH))
 			.with_resizable(false);
 
 	let gc = GraphicalContext::new(window_bld).unwrap();
 	let GraphicalContext { ctx: mut context, .. } = gc; // take the context out of gc by destructuring it
 
 	let mut screen_texture: Option<Texture> = None;
+
+	let dc = DrawConfig {
+		scale: (3, 3),
+		..Default::default()
+	};
 
 	gc.el.run(move |event, _, control_flow| {
 		match event {
@@ -85,7 +92,7 @@ pub fn run(mut machine: CHIP8) {
 					Some(t) => {
 						let mut surface = context.surface();
 
-						context.draw(&mut surface, &t, (0, 0), &DrawConfig::default());
+						context.draw(&mut surface, &t, (0, 0), &dc);
 
 						context.present(surface).unwrap(); // swap back-buffer
 					},

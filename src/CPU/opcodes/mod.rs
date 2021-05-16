@@ -23,7 +23,10 @@ impl CHIP8 {
 					},
 
 					0x000E => { // 00EE - Flow - Returns from a subroutine
-						self.sp -= 1; // decrease stack pointer
+						self.sp = self.sp.wrapping_sub(1); // decrease stack pointer
+						if self.sp as usize > self.stack.len() { 
+							panic!("Stack pointer {} is out of bounds!", self.sp);
+						}
 						self.pc = self.stack[self.sp as usize]; // puts the stored address into pc
 						self.pc += 2;
 					},
@@ -114,9 +117,9 @@ impl CHIP8 {
 
 					0x0005 => { // 8XY5 - Math - Subs Vy from Vx. sets Vf to 0 if theres a borrow and 1 if there isnt
 						if self.V[vyi] > self.V[vxi] { // goes into negative
-							self.V[0xF] = 1; // There's a borrow.
+							self.V[0xF] = 0; // There's a borrow.
 						} else {
-							self.V[0xF] = 0;
+							self.V[0xF] = 1;
 						}
 						self.V[vxi] = self.V[vxi].wrapping_sub(self.V[vyi]);
 						self.pc += 2;
@@ -127,6 +130,16 @@ impl CHIP8 {
 						self.V[vxi] >>= 1; // shift by 1
 						self.pc += 2;
 					},
+
+					0x0007 => { // 8XY7 - Math - Sets Vx to Vy-Vx. Vf is 0 when there's a borrow and 1 when there isn't.
+						if self.V[vxi] > self.V[vyi] { // there's a borrow
+							self.V[0xF] = 0;
+						} else {
+							self.V[0xF] = 1;
+						}
+						self.V[vxi] = self.V[vyi].wrapping_sub(self.V[vxi]);
+						self.pc += 2;
+					}
 
 					0x000E => { // 8XYE - BitOp - Stores the msb of Vx in Vf. Shifts Vx to the left by 1
 						self.V[0xF] = self.V[vxi] >> 7; // Get only the most significant bit
@@ -218,6 +231,21 @@ impl CHIP8 {
 					0x0007 => { // FX07 - Timer - Sets Vx to the value of the delay timer
 						self.V[vxi] = self.delay_timer;
 						self.pc += 2;
+					},
+
+					0x000A => { // FX0A - KeyOp - Waits for keypress, then stores it in Vx.
+						let mut got_kp = false;
+
+						for i in 0 .. 16 {
+							if self.key[i] != 0 {
+								self.V[vxi] = i as u8;
+								got_kp = true;
+							}
+						}
+
+						if got_kp { // will only incrase the pc if a key was pressed
+							self.pc += 2;
+						}
 					}
 
 					0x0015 => { // FX15 - Timer - Sets the delay timer to Vx
@@ -231,7 +259,7 @@ impl CHIP8 {
 					},
 
 					0x001E => { // FX1E - MEM - Adds Vx to I. Vf not affected
-						self.I += self.V[vxi] as u16;
+						self.I = self.I.wrapping_add(self.V[vxi] as u16);
 						self.pc += 2;
 					}
 

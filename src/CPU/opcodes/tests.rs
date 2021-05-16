@@ -34,12 +34,46 @@ fn opcode_00E0() {
 }
 
 #[test]
+fn opcode_00EE() {
+	let mut machine = get_default_machine(0x00EE);
+
+	machine.sp = 11;
+	machine.stack[machine.sp as usize - 1] = 40;
+
+	machine.emulate_cycle();
+
+	assert_eq!(machine.sp, 10);
+	assert_eq!(machine.pc, 42);
+}
+
+#[test]
+#[should_panic(expected = "Stack pointer 65535 is out of bounds")]
+fn opcode_00EE_out_of_bounds() {
+	let mut machine = get_default_machine(0x00EE);
+
+	machine.emulate_cycle();
+}
+
+#[test]
 fn opcode_1NNN() {
 	let mut machine = get_default_machine(0x129A);
 
 	machine.emulate_cycle();
 
 	assert_eq!(machine.pc, 0x29A);
+}
+
+#[test]
+fn opcode_2NNN() {
+	let mut machine = get_default_machine(0x2321);
+
+	let previous_pc = machine.pc;
+
+	machine.emulate_cycle();
+	
+	assert_eq!(machine.stack[machine.sp as usize - 1], previous_pc);
+	assert_eq!(machine.sp, 1);
+	assert_eq!(machine.pc, 0x321);
 }
 
 #[test]
@@ -274,23 +308,242 @@ fn opcode_8XY5() {
 
 	assert_eq!(machine.V[0x1], 0x2A);
 	assert_eq!(machine.V[0x2], 0x5F);
+	assert_eq!(machine.V[0xF], 0x1);
+	assert_eq!(machine.pc, previous_pc + 2);
+}
+
+#[test]
+fn opcode_8XY5_with_borrow() {
+	let mut machine = get_default_machine(0x8125);
+
+	let previous_pc = machine.pc;
+
+	machine.V[0x1] = 0x00;
+	machine.V[0x2] = 0xFF;
+
+	machine.emulate_cycle();
+
+	assert_eq!(machine.V[0x1], 0x1);
+	assert_eq!(machine.V[0x2], 0xFF);
 	assert_eq!(machine.V[0xF], 0x0);
 	assert_eq!(machine.pc, previous_pc + 2);
 }
 
 #[test]
-fn opcode_8XY5_with_overflow() {
-	let mut machine = get_default_machine(0x8125);
+fn opcode_8XY6_lsb_set() {
+	let mut machine = get_default_machine(0x8126);
 
 	let previous_pc = machine.pc;
 
-	machine.V[0x1] = 0x89;
-	machine.V[0x2] = 0x8A;
+	machine.V[0x1] = 0b101;
+
+	machine.emulate_cycle();
+	
+	assert_eq!(machine.V[0xF], 0b1);
+	assert_eq!(machine.V[0x1], 0b10);
+	assert_eq!(machine.pc, previous_pc + 2);
+}
+
+#[test]
+fn opcode_8XY6_lsb_unset() {
+	let mut machine = get_default_machine(0x8126);
+
+	let previous_pc = machine.pc;
+
+	machine.emulate_cycle();
+	
+	assert_eq!(machine.V[0xF], 0b0);
+	assert_eq!(machine.V[0x1], 0b0);
+	assert_eq!(machine.pc, previous_pc + 2);
+}
+
+#[test]
+fn opcode_8XY7() {
+	let mut machine = get_default_machine(0x8127);
+
+	let previous_pc = machine.pc;
+
+	machine.V[0x1] = 0x11;
+	machine.V[0x2] = 0xAA;
 
 	machine.emulate_cycle();
 
-	assert_eq!(machine.V[0x1], 0xFF);
-	assert_eq!(machine.V[0x2], 0x8A);
-	assert_eq!(machine.V[0xF], 0x1);
+	assert_eq!(machine.V[0x1], 0x99);
+	assert_eq!(machine.V[0xF], 1);
+	assert_eq!(machine.pc, previous_pc + 2);
+}
+
+#[test]
+fn opcode_8XY7_with_borrow() {
+	let mut machine = get_default_machine(0x8127);
+
+	let previous_pc = machine.pc;
+
+	machine.V[0x1] = 0x10;
+	machine.V[0x2] = 0xA;
+
+	machine.emulate_cycle();
+
+	assert_eq!(machine.V[0x1], 0xFA);
+	assert_eq!(machine.V[0xF], 0);
+	assert_eq!(machine.pc, previous_pc + 2);
+}
+
+#[test]
+fn opcode_8XYE_msb_set() {
+	let mut machine = get_default_machine(0x812E);
+
+	let previous_pc = machine.pc;
+
+	machine.V[0x1] = 0b10001001;
+
+	machine.emulate_cycle();
+
+	assert_eq!(machine.V[0xF], 0b1);
+	assert_eq!(machine.V[0x1], 0b10010);
+	assert_eq!(machine.pc, previous_pc + 2);
+}
+
+#[test]
+fn opcode_8XYE_msb_unset() {
+	let mut machine = get_default_machine(0x812E);
+
+	let previous_pc = machine.pc;
+
+	machine.V[0x1] = 0b00001001;
+
+	machine.emulate_cycle();
+
+	assert_eq!(machine.V[0xF], 0b0);
+	assert_eq!(machine.V[0x1], 0b10010);
+	assert_eq!(machine.pc, previous_pc + 2);
+}
+
+#[test]
+fn opcode_9XY0_equals() {
+	let mut machine = get_default_machine(0x9230);
+
+	let previous_pc = machine.pc;
+	
+	machine.V[2] = 0x2A;
+	machine.V[3] = 0x2A;
+
+	machine.emulate_cycle();
+	
+	assert_eq!(machine.pc, previous_pc + 2);
+}
+
+#[test]
+fn opcode_9XY0_not_equals() {
+	let mut machine = get_default_machine(0x9230);
+
+	let previous_pc = machine.pc;
+	
+	machine.V[2] = 0x2A;
+	machine.V[3] = 0x29;
+
+	machine.emulate_cycle();
+	
+	assert_eq!(machine.pc, previous_pc + 4);
+}
+
+#[test]
+fn opcode_ANNN() {
+	let mut machine = get_default_machine(0xA123);
+
+	let previous_pc = machine.pc;
+
+	machine.emulate_cycle();
+	
+	assert_eq!(machine.I, 0x123);
+	assert_eq!(machine.pc, previous_pc + 2);
+}
+
+#[test]
+fn opcode_BNNN() {
+	let mut machine = get_default_machine(0xB002);
+
+	machine.V[0x0] = 0x28;
+
+	machine.emulate_cycle();
+
+	assert_eq!(machine.pc, 0x2A);
+}
+
+#[test]
+fn opcode_FX07() {
+	let mut machine = get_default_machine(0xF107);
+
+	let previous_pc = machine.pc;
+
+	machine.delay_timer = 0x2A;
+
+	machine.emulate_cycle();
+
+	assert_eq!(machine.V[0x1], 0x2A);
+	assert_eq!(machine.pc, previous_pc + 2);
+}
+
+#[test]
+fn opcode_FX15() {
+	let mut machine = get_default_machine(0xF015);
+
+	let previous_pc = machine.pc;
+
+	machine.V[0x0] = 0x2A;
+
+	machine.emulate_cycle();
+
+	assert_eq!(machine.delay_timer, 0x29);
+	assert_eq!(machine.V[0x0], 0x2A);
+	assert_eq!(machine.pc, previous_pc + 2);
+}
+
+#[test]
+fn opcode_FX18() {
+	let mut machine = get_default_machine(0xF018);
+
+	let previous_pc = machine.pc;
+
+	machine.V[0x0] = 0x2A;
+
+	machine.emulate_cycle();
+
+	assert_eq!(machine.sound_timer, 0x29);
+	assert_eq!(machine.V[0x0], 0x2A);
+	assert_eq!(machine.pc, previous_pc + 2);
+}
+
+#[test]
+fn opcode_FX1E() {
+	let mut machine = get_default_machine(0xF31E);
+
+	let previous_pc = machine.pc;
+
+	machine.V[0x3] = 0x2A;
+	machine.I = 0x18;
+
+	machine.emulate_cycle();
+
+	assert_eq!(machine.I, 0x42);
+	assert_eq!(machine.V[0x3], 0x2A);
+	assert_eq!(machine.V[0xF], 0x0);
+	assert_eq!(machine.pc, previous_pc + 2);
+}
+
+#[test]
+fn opcode_FX1E_with_overflow() {
+	let mut machine = get_default_machine(0xF31E);
+
+	let previous_pc = machine.pc;
+
+	machine.V[0x3] = 0x32;
+	machine.I = 0xFFFE;
+
+	machine.emulate_cycle();
+
+	assert_eq!(machine.I, 0x30);
+	assert_eq!(machine.V[0x3], 0x32);
+	assert_eq!(machine.V[0xF], 0x0);
 	assert_eq!(machine.pc, previous_pc + 2);
 }
