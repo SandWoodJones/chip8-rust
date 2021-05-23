@@ -1,6 +1,6 @@
 mod opcodes;
 
-use crate::{ CHIP8, WINDOW_W, WINDOW_H, load_file };
+use crate::{ CHIP8, WINDOW_W, WINDOW_H, load_binary_file };
 
 use std::io;
 
@@ -52,7 +52,7 @@ impl CHIP8 {
 	}
 	
 	fn load_program(&mut self, path: &str) -> io::Result<()> {
-		let file = load_file(path)?;
+		let file = load_binary_file(path)?;
 		
 		if 4096 - 512 < file.len() {
 			return Err(io::Error::new(io::ErrorKind::WriteZero, "ROM too big for memory"));
@@ -147,6 +147,6 @@ impl CHIP8 {
 	}
 
 	fn play_snd() {
-		
+		println!("BEEP!");
 	}
 }

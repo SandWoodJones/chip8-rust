@@ -54,6 +54,8 @@ use crow::{
 
 use crate::graphics::GraphicalContext;
 
+use rodio::{ OutputStream, Sink };
+
 use std::path::Path;
 
 pub fn run(mut machine: CHIP8, program_path: &String) {
@@ -65,15 +67,17 @@ pub fn run(mut machine: CHIP8, program_path: &String) {
 			.with_inner_size(LogicalSize::new(VIRTUAL_WW, VIRTUAL_WH))
 			.with_resizable(false);
 
+	// create a graphical context and take the texture and context out of it through destructuring. TODO: this won't be required with rust version 2021
 	let gc = GraphicalContext::new(window_bld).unwrap();
-	let GraphicalContext { ctx: mut context, .. } = gc; // take the context out of gc by destructuring it
-
-	let mut screen_texture: Option<Texture> = None;
+	let GraphicalContext { ctx: mut context, txt: mut screen_texture, .. } = gc;
 
 	let drw_cfg = DrawConfig {
 		scale: (3, 3),
 		.. Default::default()
 	};
+
+	let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+	let sink = Sink::try_new(&stream_handle).unwrap();
 
 	gc.el.run(move |event, _, control_flow| {
 		match event {
@@ -118,15 +122,28 @@ pub fn run(mut machine: CHIP8, program_path: &String) {
 	});
 }
 
+use rodio::Decoder;
+use std::{
+	fs::File,
+	io::{ self, Read, BufReader },
+	error::Error
+};
 
-use std::fs;
-use std::io::{ self, Read };
-
-// Read a file in binary mode and store it in a buffer
-fn load_file(path: &str) -> io::Result<Vec<u8>> {
-	let mut p = fs::File::open(path)?;
+// Read a file in binary mode and store it in a vector buffer
+fn load_binary_file(path: &str) -> io::Result<Vec<u8>> {
+	let mut p = File::open(path)?;
 	let mut buf = Vec::new();
 
 	p.read_to_end(&mut buf)?;
 	Ok(buf)
+}
+
+fn load_sound_file(path: &str) -> Result<Decoder<BufReader<File>>, Box<dyn Error>> {
+	// load a sound from a file
+	let file = BufReader::new(File::open(path)?);
+
+	// decode that sound into a source
+	let source = Decoder::new(file)?;
+
+	Ok(source)
 }
