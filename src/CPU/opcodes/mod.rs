@@ -177,6 +177,8 @@ impl CHIP8 {
 			}
 
 			0xD000 => { // DXYN - Disp -- Draw a sprite at (Vx,Vy) of width 8 and height N+1. Vf is set to 1 if any pixels get flipped and to 0 if not.
+				let x = self.V[vxi] as usize;
+				let y = self.V[vyi] as usize;
 				let height = (self.opcode & 0x000F) as usize;
 				self.V[0xF] = 0; // reset the Vf register
 
@@ -187,10 +189,8 @@ impl CHIP8 {
 						let cur_pixel = sprite & (0x80 >> xline); // scans through the sprite byte, 1 bit at a time.
 						if cur_pixel != 0 { // if the current pixel is set
 							// access the screen's 2D array of pixels with 1D indexing.
-							let screen_coords = (
-								self.V[vxi] as usize + xline + 
-								((self.V[vyi] as usize + yline) * 64))
-								% (WINDOW_W as usize * WINDOW_H as usize);
+							let screen_coords = (x + xline + ((y + yline) * 64)) %
+								(WINDOW_W as usize * WINDOW_H as usize);
 
 							// check if the pixel on display at that position is already set to 1, If it
 							// is set the Vf register accordingly.
