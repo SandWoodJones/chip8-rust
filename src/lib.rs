@@ -35,6 +35,7 @@ pub struct CHIP8 {
 	pc: u16, // program counter
 	gfx: [u8; WINDOW_W as usize * WINDOW_H as usize], // visual ram
 	draw_flag: bool, // since the cpu doesn't draw each frame we set a flag for when it should
+	sound_flag: bool, // the same as above but for sound
 	delay_timer: u8,
 	sound_timer: u8,
 	stack: [u16; 16],
@@ -56,7 +57,10 @@ use crate::graphics::GraphicalContext;
 
 use rodio::{ OutputStream, Sink };
 
-use std::path::Path;
+use std::{
+	time,
+	path::Path
+};
 
 pub fn run(mut machine: CHIP8, program_path: &String) {
 	let program_name = Path::new(&program_path).file_name().unwrap()
@@ -79,18 +83,26 @@ pub fn run(mut machine: CHIP8, program_path: &String) {
 	let (_stream, stream_handle) = OutputStream::try_default().unwrap();
 	let sink = Sink::try_new(&stream_handle).unwrap();
 
+	let beep_sound = load_sound_file("beep.ogg").unwrap();
+
 	gc.el.run(move |event, _, control_flow| {
+		let next_frame_time = time::Instant::now() + time::Duration::from_micros(1);
+		*control_flow = ControlFlow::WaitUntil(next_frame_time);
+
 		match event {
 			Event::WindowEvent { event, .. } => match event {
 				WindowEvent::CloseRequested => { *control_flow = ControlFlow::Exit; },
-				WindowEvent::KeyboardInput { input, .. } => match input.virtual_keycode {
-					Some(kc) => match kc {
-						VirtualKeyCode::Escape => *control_flow = ControlFlow::Exit,
+				WindowEvent::KeyboardInput { input, .. } => {
+					match input.virtual_keycode {
+						Some(kc) => match kc {
+							VirtualKeyCode::Escape => *control_flow = ControlFlow::Exit,
+							_ => ()
+						},
 						_ => ()
-					},
+					}
+					machine.handle_input(input)
+				},
 
-					_ => machine.handle_input(input)
-				}
 				_ => ()
 			},
 
@@ -100,6 +112,10 @@ pub fn run(mut machine: CHIP8, program_path: &String) {
 					let screen_image = machine.create_screen_image();
 					screen_texture = Some(Texture::from_image(&mut context, screen_image).unwrap());
 					context.window().request_redraw();
+				}
+				if machine.sound_flag {
+					sink.append(beep_sound.clone());
+					machine.sound_flag = false;
 				}
 			},
 
@@ -122,10 +138,13 @@ pub fn run(mut machine: CHIP8, program_path: &String) {
 	});
 }
 
-use rodio::Decoder;
+use rodio::{
+	Decoder, Source,
+	source::Buffered
+};
 use std::{
 	fs::File,
-	io::{ self, Read, BufReader },
+	io::{ self, Read },
 	error::Error
 };
 
@@ -138,12 +157,19 @@ fn load_binary_file(path: &str) -> io::Result<Vec<u8>> {
 	Ok(buf)
 }
 
-fn load_sound_file(path: &str) -> Result<Decoder<BufReader<File>>, Box<dyn Error>> {
+// Loads a sound file as a Buffered struct. Thanks to https://stackoverflow.com/a/61547339/9353072
+fn load_sound_file(path: &str) -> Result<Buffered<Decoder<File>> , Box<dyn Error>> {
 	// load a sound from a file
-	let file = BufReader::new(File::open(path)?);
+	let file = File::open(path)?;
 
-	// decode that sound into a source
+	// decode that file into a source
 	let source = Decoder::new(file)?;
 
-	Ok(source)
+	// store the decoded audio in a buffer
+	let result = source.buffered();
+
+	// as the buffer is lazily initiated we force the decoding early
+	result.clone().for_each(|_| {});
+
+	Ok(result)
 }

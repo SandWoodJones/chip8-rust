@@ -27,6 +27,7 @@ impl CHIP8 {
 			pc: 0x0200, // Program counter starts at 512
 			gfx: [0; WINDOW_W as usize * WINDOW_H as usize],
 			draw_flag: true, // Clear screen once
+			sound_flag: false,
 			delay_timer: 0x00,
 			sound_timer: 0x00,
 			stack: [0x0000; 16],
@@ -77,9 +78,6 @@ impl CHIP8 {
 		// Merge the 2 bytes, by shifting the first by 8 and ORing the second.
 		self.opcode = opc1 << 8 | opc2;
 
-		println!("opcode: {:X}", self.opcode);
-		//println!("{:?}", self.key);
-
 		// Decode opcode
 		self.handle_opcode();
 		
@@ -93,7 +91,7 @@ impl CHIP8 {
 
 		if self.sound_timer > 0 { // does the same but also calls play_snd() when it gets to 1
 			if self.sound_timer == 1 {
-				CHIP8::play_snd();
+				self.play_snd();
 			}
 			self.sound_timer -= 1;
 		}
@@ -146,7 +144,7 @@ impl CHIP8 {
 		img
 	}
 
-	fn play_snd() {
-		println!("BEEP!");
+	fn play_snd(&mut self) {
+		self.sound_flag = true;
 	}
 }
