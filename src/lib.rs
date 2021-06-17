@@ -63,6 +63,12 @@ use std::{
 };
 
 pub fn run(mut machine: CHIP8, program_path: &String) {
+	// load sound data
+	let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+	let sink = Sink::try_new(&stream_handle).unwrap();
+
+	let beep_sound = load_sound_file("beep.ogg").unwrap();
+
 	let program_name = Path::new(&program_path).file_name().unwrap()
 						.to_str().unwrap();
 
@@ -74,16 +80,12 @@ pub fn run(mut machine: CHIP8, program_path: &String) {
 	// create a graphical context and take the texture and context out of it through destructuring. TODO: this won't be required with rust version 2021
 	let gc = GraphicalContext::new(window_bld).unwrap();
 	let GraphicalContext { ctx: mut context, txt: mut screen_texture, .. } = gc;
-
+	
+	// create a draw config for setting window scale
 	let drw_cfg = DrawConfig {
 		scale: (3, 3),
 		.. Default::default()
 	};
-
-	let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-	let sink = Sink::try_new(&stream_handle).unwrap();
-
-	let beep_sound = load_sound_file("beep.ogg").unwrap();
 
 	gc.el.run(move |event, _, control_flow| {
 		let next_frame_time = time::Instant::now() + time::Duration::from_micros(1);
