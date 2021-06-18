@@ -22,8 +22,8 @@ static FONTSET: [u8; 80] = [ 0xF0, 0x90, 0x90, 0x90, 0xF0,	 // 0
 
 const WINDOW_W: u8 = 64;
 const WINDOW_H: u8 = 32;
-const VIRTUAL_WW: u8 = 192;
-const VIRTUAL_WH: u8 = 96;
+const VIRTUAL_WW: u16 = 512;
+const VIRTUAL_WH: u16 = 256;
 
 // define the pieces of the cpu
 #[allow(non_snake_case)]
@@ -58,7 +58,7 @@ use crate::graphics::GraphicalContext;
 use rodio::{ OutputStream, Sink };
 
 use std::{
-	time,
+	time::{Duration, Instant},
 	path::Path
 };
 
@@ -83,13 +83,12 @@ pub fn run(mut machine: CHIP8, program_path: &String) {
 	
 	// create a draw config for setting window scale
 	let drw_cfg = DrawConfig {
-		scale: (3, 3),
+		scale: (8, 8),
 		.. Default::default()
 	};
 
 	gc.el.run(move |event, _, control_flow| {
-		let next_frame_time = time::Instant::now() + time::Duration::from_micros(1);
-		*control_flow = ControlFlow::WaitUntil(next_frame_time);
+		let start_time = Instant::now();
 
 		match event {
 			Event::WindowEvent { event, .. } => match event {
@@ -97,7 +96,7 @@ pub fn run(mut machine: CHIP8, program_path: &String) {
 				WindowEvent::KeyboardInput { input, .. } => {
 					match input.virtual_keycode {
 						Some(kc) => match kc {
-							VirtualKeyCode::Escape => *control_flow = ControlFlow::Exit,
+							VirtualKeyCode::Escape => *control_flow = ControlFlow::Exit, // quit when pressing escape
 							_ => ()
 						},
 						_ => ()
@@ -136,6 +135,14 @@ pub fn run(mut machine: CHIP8, program_path: &String) {
 			},
 
 			_ => ()
+		}
+		
+		// ugly solution but it works
+		let end_time = Instant::now();
+		let time_elapsed = end_time - start_time;
+		if time_elapsed < Duration::from_millis(1) && *control_flow != ControlFlow::Exit {
+			let next_frame_time = Duration::from_millis(1) - time_elapsed;
+			*control_flow = ControlFlow::WaitUntil(end_time + next_frame_time);
 		}
 	});
 }
